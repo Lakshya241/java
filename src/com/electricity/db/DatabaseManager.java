@@ -10,32 +10,41 @@ import java.util.List;
 
 /**
  * Handles database operations using JDBC with SQLite.
+ * 
+ * DESIGN PRINCIPLE: Database Integration and Separation of Concerns
+ * - Fully encapsulates JDBC connection lifecycle and SQL query execution.
+ * - Employs try-with-resources blocks (Automatic Resource Management) to ensure Statement,
+ *   Connection, and ResultSet objects are closed automatically to prevent connection leaks.
+ * - Utilizes transactions (ACID compliance) for atomic multi-table inserts.
+ * - Uses PreparedStatements to defend against SQL Injection attacks.
  */
 public class DatabaseManager {
     private static final String DB_NAME = "electricity_bill.db";
     private static final String CONNECTION_URL = "jdbc:sqlite:" + DB_NAME;
 
+    // Static block to register the SQLite JDBC driver at class loading time
     static {
         try {
-            // Register JDBC driver
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
-            System.err.println("SQLite JDBC Driver not found!");
+            System.err.println("SQLite JDBC Driver not found in Classpath!");
             e.printStackTrace();
         }
     }
 
     /**
-     * Initializes the database, creating tables and seeding the admin user if they do not exist.
+     * Initializes database tables and seeds the administrator account.
+     * Throws SQLException to be handled gracefully by UI error alerts.
      */
     public void initializeDatabase() throws SQLException {
+        // Try-with-resources automatically closes Connection and Statement
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             
-            // Enable foreign keys
+            // Enable SQLite foreign key constraint checks
             stmt.execute("PRAGMA foreign_keys = ON;");
 
-            // Create Customers Table
+            // Customers Profile Table
             String createCustomersTable = "CREATE TABLE IF NOT EXISTS customers ("
                     + "customer_id TEXT PRIMARY KEY, "
                     + "name TEXT NOT NULL, "
@@ -46,7 +55,7 @@ public class DatabaseManager {
                     + ");";
             stmt.execute(createCustomersTable);
 
-            // Create Accounts Table (for role-based login)
+            // User Accounts Table (stores Admin credentials and auto-generated Customer logins)
             String createAccountsTable = "CREATE TABLE IF NOT EXISTS accounts ("
                     + "username TEXT PRIMARY KEY, "
                     + "password TEXT NOT NULL, "
@@ -56,7 +65,7 @@ public class DatabaseManager {
                     + ");";
             stmt.execute(createAccountsTable);
 
-            // Create Bills Table
+            // Bills Table (binds readings and statements to a customer profile)
             String createBillsTable = "CREATE TABLE IF NOT EXISTS bills ("
                     + "bill_id INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + "customer_id TEXT NOT NULL, "
@@ -70,15 +79,21 @@ public class DatabaseManager {
                     + ");";
             stmt.execute(createBillsTable);
 
-            // Seed default Admin account if not present
+            // Seed default Admin credentials if table is clean
             seedAdminAccount(conn);
         }
     }
 
+    /**
+     * Helper to obtain a database connection connection.
+     */
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(CONNECTION_URL);
     }
 
+    /**
+     * Seeds the initial admin account (admin/admin123) if none exists.
+     */
     private void seedAdminAccount(Connection conn) throws SQLException {
         String checkSql = "SELECT COUNT(*) FROM accounts WHERE role = 'Admin'";
         try (Statement stmt = conn.createStatement();
@@ -92,14 +107,18 @@ public class DatabaseManager {
     }
 
     /**
-     * Authenticates a user and returns their Account model if successful.
+     * Validates credentials against the database.
+     * Uses parameterized queries to prevent SQL Injection.
      */
     public Account authenticate(String username, String password) throws SQLException {
         String sql = "SELECT * FROM accounts WHERE username = ? AND password = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            // Binding parameters securely
             pstmt.setString(1, username);
             pstmt.setString(2, password);
+            
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     return new Account(
@@ -115,17 +134,22 @@ public class DatabaseManager {
     }
 
     /**
-     * Inserts a new customer and automatically generates their Customer account in a transaction.
+     * Registers a new customer profile and inserts a Customer Login Account.
+     * 
+     * DATABASE TRANSACTION PRINCIPLE:
+     * - Uses setAutoCommit(false) to treat insertions as an atomic unit (All-or-Nothing).
+     * - Rolls back modifications in the catch block if any error occurs to maintain database integrity.
      */
     public void addCustomer(Customer customer) throws SQLException {
         String sqlCustomer = "INSERT INTO customers (customer_id, name, email, phone, address, meter_number) VALUES (?, ?, ?, ?, ?, ?)";
-        String sqlAccount = "INSERT INTO accounts (username, password, role, customer_id) VALUES (?, ?, ?, ?, ?)";
+        String sqlAccount = "INSERT INTO accounts (username, password, role, customer_id) VALUES (?, ?, ?, ?)";
         
         Connection conn = null;
         try {
             conn = getConnection();
-            conn.setAutoCommit(false); // Start Transaction
+            conn.setAutoCommit(false); // Enable manual transaction boundary
             
+            // 1. Insert Customer Profile
             try (PreparedStatement pstmtCust = conn.prepareStatement(sqlCustomer)) {
                 pstmtCust.setString(1, customer.getCustomerId());
                 pstmtCust.setString(2, customer.getName());
@@ -136,9 +160,8 @@ public class DatabaseManager {
                 pstmtCust.executeUpdate();
             }
             
-            // Create user login (username = meter number, password = phone)
-            String sqlAccountInsert = "INSERT INTO accounts (username, password, role, customer_id) VALUES (?, ?, ?, ?)";
-            try (PreparedStatement pstmtAcc = conn.prepareStatement(sqlAccountInsert)) {
+            // 2. Insert Login Account (Username: Meter Number, Password: Phone)
+            try (PreparedStatement pstmtAcc = conn.prepareStatement(sqlAccount)) {
                 pstmtAcc.setString(1, customer.getMeterNumber());
                 pstmtAcc.setString(2, customer.getPhone());
                 pstmtAcc.setString(3, "Customer");
@@ -146,8 +169,10 @@ public class DatabaseManager {
                 pstmtAcc.executeUpdate();
             }
             
+            // Commit changes if both inserts succeeded
             conn.commit();
         } catch (SQLException e) {
+            // Roll back modifications if transaction failed
             if (conn != null) {
                 try {
                     conn.rollback();
@@ -155,16 +180,16 @@ public class DatabaseManager {
                     ex.printStackTrace();
                 }
             }
-            throw e;
+            throw e; // Re-throw to inform GUI
         } finally {
             if (conn != null) {
-                conn.close();
+                conn.close(); // Return connection to system pool
             }
         }
     }
 
     /**
-     * Fetches all customers.
+     * Retrieves all customer profiles from the database.
      */
     public List<Customer> getAllCustomers() throws SQLException {
         List<Customer> customers = new ArrayList<>();
@@ -188,7 +213,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Gets customer by customer ID.
+     * Fetches a customer by customer ID.
      */
     public Customer getCustomer(String customerId) throws SQLException {
         String sql = "SELECT * FROM customers WHERE customer_id = ?";
@@ -212,7 +237,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Gets customer by Meter Number.
+     * Fetches a customer by Meter Number.
      */
     public Customer getCustomerByMeter(String meterNumber) throws SQLException {
         String sql = "SELECT * FROM customers WHERE meter_number = ?";
@@ -272,7 +297,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Fetches all bills (Admin only).
+     * Fetches all bills (Admin access).
      */
     public List<Bill> getAllBills() throws SQLException {
         List<Bill> bills = new ArrayList<>();
@@ -298,7 +323,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Fetches bills belonging to a specific customer (User only).
+     * Fetches bills belonging to a specific customer (Customer access).
      */
     public List<Bill> getCustomerBills(String customerId) throws SQLException {
         List<Bill> bills = new ArrayList<>();
@@ -339,7 +364,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Searches all bills (Admin only).
+     * Searches all bills using wildcards (Admin access).
      */
     public List<Bill> searchBills(String query) throws SQLException {
         List<Bill> bills = new ArrayList<>();
@@ -374,7 +399,7 @@ public class DatabaseManager {
     }
 
     /**
-     * Searches bills for a specific customer (User only).
+     * Searches bills for a specific customer (Customer access).
      */
     public List<Bill> searchCustomerBills(String customerId, String query) throws SQLException {
         List<Bill> bills = new ArrayList<>();

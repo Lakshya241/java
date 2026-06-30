@@ -1,19 +1,29 @@
 package com.electricity.model;
 
 /**
- * Base class representing a Person.
- * Demonstrates inheritance and encapsulation.
+ * Base class representing a general Person.
+ * 
+ * OOP CONCEPT: Abstraction and Encapsulation
+ * - This class encapsulates general contact information (name, email, phone, address).
+ * - All instance fields are declared 'private' to prevent direct outside manipulation.
+ * - Public getter and setter methods are provided to access and modify these fields,
+ *   enabling data validation and safeguarding data integrity.
  */
 public class Person {
+    // Private data members (Encapsulation)
     private String name;
     private String email;
     private String phone;
     private String address;
 
-    // Default constructor
+    /**
+     * Default constructor.
+     */
     public Person() {}
 
-    // Parameterized constructor
+    /**
+     * Parameterized constructor to initialize a person's contact details.
+     */
     public Person(String name, String email, String phone, String address) {
         this.name = name;
         this.email = email;
@@ -21,7 +31,8 @@ public class Person {
         this.address = address;
     }
 
-    // Getters and Setters for Encapsulation
+    // --- GETTERS AND SETTERS (Encapsulation Interfaces) ---
+
     public String getName() {
         return name;
     }

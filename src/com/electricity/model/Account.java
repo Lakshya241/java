@@ -1,23 +1,35 @@
 package com.electricity.model;
 
 /**
- * Account class representing a user credential record for authentication.
- * Demonstrates encapsulation.
+ * Account class representing user credentials for authentication.
+ * 
+ * OOP CONCEPT: Encapsulation
+ * - Protects secure credentials (username, password) using private modifiers.
+ * - Provides public getters and setters to encapsulate the state.
  */
 public class Account {
+    // Private data members
     private String username;
     private String password;
     private String role;
-    private String customerId; // Null for admin accounts
+    private String customerId; // References customer_id, null for admins
 
+    /**
+     * Default constructor.
+     */
     public Account() {}
 
+    /**
+     * Parameterized constructor.
+     */
     public Account(String username, String password, String role, String customerId) {
         this.username = username;
         this.password = password;
         this.role = role;
         this.customerId = customerId;
     }
+
+    // --- GETTERS AND SETTERS ---
 
     public String getUsername() {
         return username;

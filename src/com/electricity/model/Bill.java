@@ -1,10 +1,15 @@
 package com.electricity.model;
 
 /**
- * Bill class representing an electricity bill record.
- * Demonstrates encapsulation.
+ * Bill class representing an electricity bill statement record.
+ * 
+ * OOP CONCEPT: Encapsulation
+ * - Models billing statement metadata and metrics (previous reading, current reading, units, amount, status).
+ * - Restricts direct access to member variables by defining them as private.
+ * - Exposes controlled public getter and setter methods.
  */
 public class Bill {
+    // Private data members
     private int billId;
     private String customerId;
     private double previousReading;
@@ -14,9 +19,14 @@ public class Bill {
     private String billDate;
     private String paymentStatus;
 
-    // Constructors
+    /**
+     * Default constructor.
+     */
     public Bill() {}
 
+    /**
+     * Parameterized constructor to initialize a complete billing statement record.
+     */
     public Bill(int billId, String customerId, double previousReading, double currentReading, 
                 double unitsConsumed, double totalAmount, String billDate, String paymentStatus) {
         this.billId = billId;
@@ -29,7 +39,8 @@ public class Bill {
         this.paymentStatus = paymentStatus;
     }
 
-    // Getters and Setters
+    // --- GETTERS AND SETTERS ---
+
     public int getBillId() {
         return billId;
     }

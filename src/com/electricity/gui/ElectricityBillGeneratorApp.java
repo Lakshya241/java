@@ -27,29 +27,38 @@ import java.util.Random;
 /**
  * Main application window for the Electricity Bill Generator.
  * Integrates dual-role login, user self-registration, custom cream styles, and SQLite JDBC persistence.
+ * 
+ * DESIGN PRINCIPLE: Event-driven Programming & Presentation Layer
+ * - Implements a Java Swing Desktop client.
+ * - Employs a CardLayout as the root controller to switch between login/register and user dashboards.
+ * - Registers event listeners (ActionListeners, DocumentListeners) to handle clicks and inputs dynamically.
+ * - Handles errors gracefully using try-catch blocks, alerting users with JOptionPane warnings.
  */
 public class ElectricityBillGeneratorApp extends JFrame {
 
     private final DatabaseManager dbManager;
+    
+    // OOP CONCEPT: Polymorphism (Interface reference pointing to Slab Calculator instance)
     private final BillCalculator calculator;
+    
     private Account currentAccount;
 
-    // Card Layout for Login vs Main App switching
+    // Card Layout for Screen Transitions
     private JPanel cardPanel;
     private CardLayout cardLayout;
 
-    // Login screen components
+    // Login Screen components
     private JTextField loginUserField;
     private JPasswordField loginPassField;
     private JComboBox<String> loginRoleCombo;
 
-    // Self-Registration screen components
+    // Self-Registration components
     private JTextField regNameField;
     private JTextField regEmailField;
     private JTextField regPhoneField;
     private JTextArea regAddressArea;
 
-    // Admin View components
+    // Administrator Tab components
     private JTabbedPane adminTabbedPane;
     private JTextField custIdField;
     private JTextField nameField;
@@ -93,9 +102,11 @@ public class ElectricityBillGeneratorApp extends JFrame {
 
     public ElectricityBillGeneratorApp() {
         dbManager = new DatabaseManager();
+        
+        // Polymorphic reference assignment
         calculator = new SlabBillCalculator();
 
-        // Initialize Database
+        // Initialize SQLite Tables and connection pools
         try {
             dbManager.initializeDatabase();
         } catch (SQLException e) {
@@ -105,17 +116,17 @@ public class ElectricityBillGeneratorApp extends JFrame {
             e.printStackTrace();
         }
 
-        // Configure Frame
+        // Configure Frame attributes
         setTitle("LogiTrack Utilities - Electricity Billing System");
         setSize(980, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Setup CardLayout
+        // Layout Controller Setup
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // Create Screens
+        // Add views to layout stack
         cardPanel.add(createLoginScreen(), "LOGIN");
         cardPanel.add(createRegisterScreen(), "REGISTER");
         cardPanel.add(createAdminAppScreen(), "ADMIN_APP");
@@ -123,7 +134,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
 
         add(cardPanel);
         
-        // Start on Login Card
+        // Initial view is Login Portal
         cardLayout.show(cardPanel, "LOGIN");
     }
 
@@ -134,7 +145,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         JPanel container = new JPanel(new GridBagLayout());
         container.setBackground(CREAM_BG);
 
-        // Login Card Panel
+        // Login Card panel container
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(CARD_BG);
@@ -145,7 +156,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.setPreferredSize(new Dimension(380, 470));
         card.setMaximumSize(new Dimension(380, 470));
 
-        // App Logo/Header
+        // Heading title
         JLabel logoLbl = new JLabel("LogiTrack Utilities");
         logoLbl.setFont(new Font("Segoe UI", Font.BOLD, 26));
         logoLbl.setForeground(ACCENT_TAN);
@@ -159,7 +170,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.add(subLogoLbl);
         card.add(Box.createVerticalStrut(20));
 
-        // Form Fields
+        // Entry Grid Fields
         JPanel form = new JPanel(new GridLayout(6, 1, 3, 3));
         form.setBackground(CARD_BG);
 
@@ -181,7 +192,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.add(form);
         card.add(Box.createVerticalStrut(20));
 
-        // Login Button
+        // Submit action trigger
         JButton loginBtn = new JButton("Access Portal");
         loginBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         loginBtn.setBackground(ACCENT_TAN);
@@ -192,7 +203,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
 
         card.add(Box.createVerticalStrut(10));
 
-        // Self Register Link button
+        // Link button for self-registration transition
         JButton registerLink = new JButton("New Customer? Register Profile");
         registerLink.setBorderPainted(false);
         registerLink.setContentAreaFilled(false);
@@ -204,7 +215,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
 
         container.add(card);
 
-        // Authentication Event
+        // Authentication Event Handler
         loginBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -213,33 +224,36 @@ public class ElectricityBillGeneratorApp extends JFrame {
                     String password = new String(loginPassField.getPassword()).trim();
                     String role = (String) loginRoleCombo.getSelectedItem();
 
+                    // Check empty fields (Exception propagation validation)
                     if (username.isEmpty() || password.isEmpty()) {
                         throw new ValidationException("Please fill in both Username and Password fields.");
                     }
 
+                    // Database credentials authentication query
                     Account account = dbManager.authenticate(username, password);
 
                     if (account == null) {
                         throw new ValidationException("Invalid username or password. Please try again.");
                     }
 
+                    // Role verification
                     if (!account.getRole().equalsIgnoreCase(role)) {
                         throw new ValidationException("Access role mismatch. Selected role is unauthorized for this account.");
                     }
 
-                    // Authenticated successfully
+                    // Store active user session profile
                     currentAccount = account;
                     loginUserField.setText("");
                     loginPassField.setText("");
 
                     if (role.equalsIgnoreCase("Admin")) {
-                        // Refresh Admin Screens
+                        // Load Admin Workspace
                         refreshCustomerTable();
                         populateCustomerCombo();
                         refreshAdminBillTable();
                         cardLayout.show(cardPanel, "ADMIN_APP");
                     } else {
-                        // Load Customer Details
+                        // Load Customer Personal Dashboard
                         Customer customer = dbManager.getCustomer(account.getCustomerId());
                         if (customer != null) {
                             custProfileName.setText(customer.getName());
@@ -264,7 +278,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
             }
         });
 
-        // Register Click Link
+        // Register button card switcher event
         registerLink.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -272,7 +286,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
             }
         });
 
-        // Add Enter Key bindings for quick submission
+        // Enter key action listeners on inputs
         ActionListener enterSubmit = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -292,7 +306,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         JPanel container = new JPanel(new GridBagLayout());
         container.setBackground(CREAM_BG);
 
-        // Card Panel
+        // Center card container
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(CARD_BG);
@@ -303,7 +317,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.setPreferredSize(new Dimension(400, 480));
         card.setMaximumSize(new Dimension(400, 480));
 
-        // Header Title
+        // Subheader branding
         JLabel titleLbl = new JLabel("Customer Self-Registration");
         titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLbl.setForeground(ACCENT_TAN);
@@ -317,7 +331,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.add(subTitleLbl);
         card.add(Box.createVerticalStrut(20));
 
-        // Form Panels
+        // Grid form registration fields
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(CARD_BG);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -354,7 +368,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         card.add(form);
         card.add(Box.createVerticalStrut(20));
 
-        // Buttons
+        // Buttons Flow Panel
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         btnPanel.setBackground(CARD_BG);
         
@@ -371,7 +385,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
 
         container.add(card);
 
-        // Actions
+        // Submit registration action listener
         submitBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -381,17 +395,17 @@ public class ElectricityBillGeneratorApp extends JFrame {
                     String phone = regPhoneField.getText().trim();
                     String address = regAddressArea.getText().trim();
 
-                    // Validation Checks
+                    // Input Form validation (checked exception validation pattern)
                     validateCustomerInput(name, email, phone, address);
 
-                    // Generate Customer ID and Meter login username
+                    // Generate Customer ID and Meter Number (username)
                     Random rand = new Random();
                     int custNum = 1000 + rand.nextInt(9000);
                     int metNum = 5000 + rand.nextInt(4000);
                     String custId = "CUST-" + custNum;
                     String meterNum = "MET-" + metNum;
 
-                    // Add Customer & Account atomically
+                    // Insert Customer & Login records atomically
                     Customer customer = new Customer(custId, name, email, phone, address, meterNum);
                     dbManager.addCustomer(customer);
 
@@ -403,7 +417,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
                             "You can now use these details to log into the Customer Portal.",
                             "Account Created", JOptionPane.INFORMATION_MESSAGE);
 
-                    // Clear fields and transition
+                    // Reset self register fields and toggle back to login screen
                     clearSelfRegForm();
                     cardLayout.show(cardPanel, "LOGIN");
 
@@ -457,7 +471,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         headerWrap.add(logoutPanel, BorderLayout.EAST);
         panel.add(headerWrap, BorderLayout.NORTH);
 
-        // Tabbed Pane
+        // Administrative Workspace Tabbed Pane
         adminTabbedPane = new JTabbedPane();
         adminTabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
@@ -581,6 +595,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
                     String phone = phoneField.getText().trim();
                     String address = addressArea.getText().trim();
 
+                    // Form validation
                     validateCustomerInput(name, email, phone, address);
 
                     Customer customer = new Customer(custId, name, email, phone, address, meterNum);
@@ -590,6 +605,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
                             "Customer profile registered!\nID: " + custId + "\nMeter login username: " + meterNum + "\nDefault password: " + phone,
                             "Registration Successful", JOptionPane.INFORMATION_MESSAGE);
 
+                    // Refresh grids and reset forms
                     refreshCustomerTable();
                     populateCustomerCombo();
                     clearCustomerForm();
@@ -706,7 +722,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         mainPanel.add(formPanel, BorderLayout.WEST);
         mainPanel.add(previewPanel, BorderLayout.CENTER);
 
-        // Listeners
+        // Customer selection listener
         customerCombo.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -714,6 +730,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
             }
         });
 
+        // Dynamic typing change listener for live previews
         currReadingField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) { updateLiveCalculation(); }
@@ -723,6 +740,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
             public void changedUpdate(DocumentEvent e) { updateLiveCalculation(); }
         });
 
+        // Submit action
         genBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -736,15 +754,20 @@ public class ElectricityBillGeneratorApp extends JFrame {
                     double prev = Double.parseDouble(prevReadingField.getText());
                     double curr = Double.parseDouble(currReadingField.getText().trim());
                     double units = curr - prev;
+                    
+                    // OOP CONCEPT: Polymorphic call to calculateBill
                     double total = calculator.calculateBill(units);
+                    
                     String date = dateField.getText().trim();
                     String status = (String) statusCombo.getSelectedItem();
 
                     Bill bill = new Bill(0, customer.getCustomerId(), prev, curr, units, total, date, status);
                     dbManager.addBill(bill);
 
+                    // Show visual detailed invoice statement
                     showInvoiceDialog(customer, bill);
 
+                    // Refresh Views
                     refreshAdminBillTable();
                     clearBillForm();
                     updateLiveCalculation();
@@ -1338,7 +1361,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout());
 
-        // Header Gradient
+        // Header Gradient painting
         JPanel headerPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1356,7 +1379,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
         headerLbl.setForeground(TEXT_DARK);
         headerPanel.add(headerLbl);
 
-        // Body
+        // Body scroll container
         JPanel bodyPanel = new JPanel();
         bodyPanel.setBackground(CARD_BG);
         bodyPanel.setLayout(new BoxLayout(bodyPanel, BoxLayout.Y_AXIS));
@@ -1397,7 +1420,10 @@ public class ElectricityBillGeneratorApp extends JFrame {
         costPanel.setBackground(CARD_BG);
         costPanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(BORDER_CREAM), "Charge Calculations"));
         ((TitledBorder)costPanel.getBorder()).setTitleColor(ACCENT_TAN);
+        
+        // OOP CONCEPT: Polymorphic call to getSlabBreakdown
         JLabel costBreakdownLabel = new JLabel(calculator.getSlabBreakdown(bill.getUnitsConsumed()));
+        
         costPanel.add(costBreakdownLabel, BorderLayout.CENTER);
         bodyPanel.add(costPanel);
 
@@ -1467,7 +1493,7 @@ public class ElectricityBillGeneratorApp extends JFrame {
             Graphics2D g2d = (Graphics2D) g;
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            // Creamy/Tan Gradient
+            // Creamy/Sand Gradient
             GradientPaint gp = new GradientPaint(0, 0, new Color(234, 214, 189), getWidth(), getHeight(), new Color(215, 176, 139));
             g2d.setPaint(gp);
             g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -1483,11 +1509,11 @@ public class ElectricityBillGeneratorApp extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Setup FlatLaf Look and Feel with custom Cream tokens
+        // Setup FlatLaf Look and Feel with custom Cream UIManager properties
         try {
             FlatLightLaf.setup();
             
-            // Apply warm creamy customizations
+            // Apply warm creamy customizations globally to UIManager
             Color creamBg = new Color(253, 251, 247);
             Color warmWhite = new Color(255, 254, 250);
             Color darkCocoa = new Color(62, 39, 35);

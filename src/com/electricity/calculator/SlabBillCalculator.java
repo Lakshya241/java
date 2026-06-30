@@ -2,8 +2,13 @@ package com.electricity.calculator;
 
 /**
  * Concrete implementation of BillCalculator based on progressive slab rates.
+ * 
+ * OOP CONCEPT: Polymorphism (Interface Implementation)
+ * - Implements the 'BillCalculator' interface.
+ * - Encapsulates the specific mathematical formulas and tier thresholds for slab-based billing.
  */
 public class SlabBillCalculator implements BillCalculator {
+    // Pricing configuration constants
     public static final double SLAB_1_LIMIT = 100;
     public static final double SLAB_2_LIMIT = 300;
     public static final double SLAB_3_LIMIT = 500;
@@ -16,6 +21,14 @@ public class SlabBillCalculator implements BillCalculator {
     public static final double FIXED_CHARGE = 15.00;
     public static final double TAX_RATE = 0.10; // 10% surcharge/tax
 
+    /**
+     * Calculates the bill using progressive charging:
+     * - First 100 units at RATE_SLAB_1
+     * - Next 200 units (101-300) at RATE_SLAB_2
+     * - Next 200 units (301-500) at RATE_SLAB_3
+     * - Any units above 500 at RATE_SLAB_4
+     * - Adds fixed charge and tax.
+     */
     @Override
     public double calculateBill(double units) {
         if (units < 0) return 0;
@@ -32,7 +45,7 @@ public class SlabBillCalculator implements BillCalculator {
             remainingUnits = 0;
         }
 
-        // Slab 2: 101 - 300
+        // Slab 2: 101 - 300 (range of 200 units)
         double slab2Range = SLAB_2_LIMIT - SLAB_1_LIMIT;
         if (remainingUnits > slab2Range) {
             energyCharge += slab2Range * RATE_SLAB_2;
@@ -42,7 +55,7 @@ public class SlabBillCalculator implements BillCalculator {
             remainingUnits = 0;
         }
 
-        // Slab 3: 301 - 500
+        // Slab 3: 301 - 500 (range of 200 units)
         double slab3Range = SLAB_3_LIMIT - SLAB_2_LIMIT;
         if (remainingUnits > slab3Range) {
             energyCharge += slab3Range * RATE_SLAB_3;
@@ -62,6 +75,9 @@ public class SlabBillCalculator implements BillCalculator {
         return subtotal + tax;
     }
 
+    /**
+     * Generates a descriptive HTML table summarizing calculation tiers.
+     */
     @Override
     public String getSlabBreakdown(double units) {
         if (units < 0) return "Invalid units";
