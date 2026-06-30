@@ -69,8 +69,8 @@ public class SlabBillCalculator implements BillCalculator {
         StringBuilder sb = new StringBuilder();
         double energyCharge = 0;
 
-        sb.append("<html><body style='font-family: sans-serif; font-size: 11px; line-height: 1.4; margin: 5px;'>");
-        sb.append("<b style='font-size: 12px; color: #2196F3;'>Slab-wise Calculation Breakdown:</b><br/>");
+        sb.append("<html><body style='font-family: sans-serif; font-size: 11px; line-height: 1.4; margin: 5px; color: #3E2723;'>");
+        sb.append("<b style='font-size: 12px; color: #8C6239;'>Slab-wise Calculation Breakdown:</b><br/>");
         sb.append("<table border='0' cellspacing='4' cellpadding='0' width='100%'>");
 
         // Slab 1
@@ -107,12 +107,12 @@ public class SlabBillCalculator implements BillCalculator {
         double tax = subtotal * TAX_RATE;
         double total = subtotal + tax;
 
-        sb.append("<tr><td colspan='3'><hr style='border: 0; border-top: 1px solid #555; margin: 4px 0;'/></td></tr>");
+        sb.append("<tr><td colspan='3'><hr style='border: 0; border-top: 1px solid #D7C4A5; margin: 4px 0;'/></td></tr>");
         sb.append(String.format("<tr><td><b>Energy Charge Subtotal:</b></td><td></td><td align='right'><b>$%.2f</b></td></tr>", energyCharge));
         sb.append(String.format("<tr><td>Fixed System Charge:</td><td></td><td align='right'>$%.2f</td></tr>", FIXED_CHARGE));
         sb.append(String.format("<tr><td>Surcharge Tax (10%%):</td><td></td><td align='right'>$%.2f</td></tr>", tax));
-        sb.append("<tr><td colspan='3'><hr style='border: 0; border-top: 1px solid #555; margin: 4px 0;'/></td></tr>");
-        sb.append(String.format("<tr><td><b style='color: #4CAF50;'>Total Net Payable:</b></td><td></td><td align='right'><b style='color: #4CAF50;'>$%.2f</b></td></tr>", total));
+        sb.append("<tr><td colspan='3'><hr style='border: 0; border-top: 1px solid #D7C4A5; margin: 4px 0;'/></td></tr>");
+        sb.append(String.format("<tr><td><b style='color: #8C6239;'>Total Net Payable:</b></td><td></td><td align='right'><b style='color: #8C6239;'>$%.2f</b></td></tr>", total));
 
         sb.append("</table>");
         sb.append("</body></html>");
